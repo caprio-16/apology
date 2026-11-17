@@ -1,0 +1,455 @@
+<title>Ryu's Peacock Garden</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,400;1,9..144,500&family=Nunito:wght@500;700&display=swap">
+<style>
+/* Layout: one full-screen night garden. Bokeh canvas behind, a glass message card first, then a layered garden: soft far flowers, peacock fan, sharp mid flowers, blurred giant flowers framing the corners. Everything sizes from rem (fluid root) and vmin so it holds on phones, tablets and desktops. */
+:root {
+  --ink: #05202a;
+  --deep: #0b3f4a;
+  --teal: #1fb5ac;
+  --azure: #2f86d6;
+  --gold: #f4c65a;
+  --blush: #ff9eb8;
+  --lilac: #c7a8ff;
+  --text: #f2fbf8;
+  --muted: #a9d3cf;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+html {
+  height: 100%;
+  /* fluid root: ~15px on small phones, ~16px on phones, up to 20px on tablets and desktops */
+  font-size: clamp(14px, calc(10px + 1.6vmin), 20px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  height: 100%;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--ink);
+  background-image: radial-gradient(120% 90% at 50% 20%, var(--deep) 0%, var(--ink) 70%);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+#bokeh { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.layer {
+  position: absolute; inset: 0; z-index: 1;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+  box-sizing: border-box;
+}
+
+/* ---------- message card ---------- */
+.intro {
+  display: flex;
+  overflow-y: auto;
+  padding-top: 3.2rem;
+  transition: opacity .7s ease, transform .7s ease;
+}
+.intro.gone { opacity: 0; transform: scale(.96); pointer-events: none; }
+.card {
+  margin: auto;
+  width: min(100%, 27rem);
+  box-sizing: border-box;
+  padding: 2.1rem 1.7rem 1.8rem;
+  border-radius: 1.9rem;
+  background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 30px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  text-align: center;
+  animation: cardIn 1s cubic-bezier(.2,.8,.2,1) both;
+}
+.card .feather { width: 4rem; height: 4rem; margin: -4rem auto .9rem; display: block; filter: drop-shadow(0 6px 14px rgba(31,181,172,.55)); }
+.hello {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.9rem;
+  line-height: 1.25;
+  margin: 0 0 .9rem;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.hello em { font-style: italic; color: var(--gold); }
+.body-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  color: var(--text);
+  text-wrap: pretty;
+}
+.open {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  color: #052a30;
+  background: linear-gradient(120deg, var(--gold), #ffdf8e);
+  border: 0;
+  border-radius: 999px;
+  min-height: 3rem;
+  padding: .85rem 1.7rem .85rem 1.9rem;
+  display: inline-flex; align-items: center; gap: .75rem;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(244,198,90,.35);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.open:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(244,198,90,.45); }
+.open:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.open .arr { display: inline-block; font-size: 1.3em; line-height: 1; animation: nudge 1.4s ease-in-out infinite; }
+@keyframes nudge { 0%,100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+@keyframes cardIn { from { opacity: 0; transform: translateY(24px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ---------- garden ---------- */
+.garden { opacity: 0; pointer-events: none; transition: opacity 1s ease .2s; overflow: hidden; }
+.garden.on { opacity: 1; pointer-events: auto; }
+.bx { position: absolute; inset: 0; pointer-events: none; }
+#fg { z-index: 2; }
+.sorry {
+  position: absolute; left: 0; right: 0; top: max(16px, env(safe-area-inset-top, 0px));
+  text-align: center;
+  font-family: var(--font-display); font-style: italic; font-weight: 400;
+  font-size: 1.25rem;
+  color: var(--muted);
+  letter-spacing: .02em;
+  opacity: 0;
+  z-index: 3;
+}
+.garden.on .sorry { animation: fadeUp 1.2s ease 2.2s both; }
+.emblem {
+  position: absolute; left: 50%; top: max(3.6rem, 14%);
+  width: min(88vw, 60vh, 460px);
+  transform: translateX(-50%);
+}
+.emblem svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 26px rgba(47,134,214,.5)); animation: sway 7s ease-in-out infinite; transform-origin: 50% 85%; }
+.ft { transform-origin: 150px 200px; transform: rotate(var(--a)); }
+.garden.on .ft { animation: fan 1.2s cubic-bezier(.2,.9,.3,1.15) both; animation-delay: calc(.5s + var(--d)); }
+.garden.on .bd { animation: fadeUp .9s ease 1.4s both; }
+@keyframes fan { from { transform: rotate(0deg) scale(.15); opacity: 0; } to { transform: rotate(var(--a)) scale(1); opacity: 1; } }
+@keyframes sway { 0%,100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.hill { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: linear-gradient(to top, #041a20 8%, rgba(4,26,32,0)); pointer-events: none; }
+
+/* animated-in items (flowers, leaves) */
+.ap { position: absolute; opacity: 0; transform: scale(.2) rotate(-25deg); pointer-events: none; }
+.garden.on .ap { animation: pop 1.1s cubic-bezier(.2,1.3,.4,1) both; animation-delay: calc(.9s + var(--d, 0s)); }
+@keyframes pop { from { transform: scale(.2) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.ap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.fl { width: calc(var(--s) * 1vmin); aspect-ratio: 1; left: calc(var(--x) * 1%); margin-left: calc(var(--s) * -.5vmin); bottom: calc(var(--b) * 1vmin); transform-origin: 50% 60%; }
+.fl svg { animation: bob 6s ease-in-out infinite; animation-delay: var(--d); transform-origin: 50% 55%; filter: drop-shadow(0 .6vmin 1vmin rgba(0,0,0,.35)); }
+.leaf { width: calc(var(--s) * .5vmin); aspect-ratio: 1 / 2; left: calc(var(--x) * 1%); margin-left: calc(var(--s) * -.25vmin); bottom: calc(var(--b) * 1vmin); transform-origin: 50% 100%; }
+.leaf svg { transform-origin: 50% 100%; }
+.fgf { width: calc(var(--s) * 1vmin); aspect-ratio: 1; }
+.fgf svg { filter: blur(var(--bl, 1.7vmin)); animation: bob 9s ease-in-out infinite; animation-delay: var(--d); transform-origin: 50% 50%; }
+.ff { width: calc(var(--s) * 1vmin); aspect-ratio: 1; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); margin-left: calc(var(--s) * -.5vmin); }
+.ff svg { opacity: .8; filter: blur(.45vmin); animation: drift 10s ease-in-out infinite; animation-delay: var(--d); }
+@keyframes bob { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+@keyframes drift { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-1.8vmin) rotate(14deg); } }
+
+.crit { --cs: clamp(72px, 19vmin, 150px); position: absolute; width: var(--cs); aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; opacity: 0; transform: scale(.2) rotate(-25deg); z-index: 3; }
+.crit svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.garden.on .crit { animation: pop .9s cubic-bezier(.2,1.5,.4,1) both; animation-delay: calc(1.9s + var(--d)); }
+.crit .in { width: 100%; height: 100%; filter: drop-shadow(0 .8vmin 1.2vmin rgba(0,0,0,.35)); animation: hop 3.2s ease-in-out infinite; animation-delay: var(--d); }
+.crit.boing .in { animation: boing .7s ease; }
+.crit:focus-visible { outline: 3px solid #fff; outline-offset: 4px; border-radius: 16px; }
+@keyframes hop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes boing { 0% { transform: scale(1); } 30% { transform: scale(1.25, .8); } 60% { transform: scale(.85, 1.2) translateY(-24px); } 100% { transform: scale(1); } }
+
+/* short landscape screens */
+@media (max-height: 520px) and (orientation: landscape) {
+  html { font-size: 13px; }
+  .intro { padding-top: 2.6rem; }
+  .card { padding: 1.5rem 1.5rem 1.3rem; }
+  .hello { font-size: 1.6rem; }
+  .body-text { margin-bottom: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .garden.on .ap, .garden.on .crit, .garden.on .sorry, .garden.on .bd { opacity: 1; transform: none; }
+  .garden.on .ft { opacity: 1; transform: rotate(var(--a)); }
+}
+</style>
+
+<canvas id="bokeh" aria-hidden="true"></canvas>
+
+<main class="layer intro" id="intro">
+  <section class="card" role="dialog" aria-modal="true" aria-labelledby="hello">
+    <svg class="feather" viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="cf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#25c2b0"/><stop offset="1" stop-color="#2f86d6"/></linearGradient></defs>
+      <path d="M32 62 C31 46 31 34 32 14" stroke="#1fb5ac" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="32" cy="24" rx="15" ry="22" fill="url(#cf)"/>
+      <ellipse cx="32" cy="21" rx="8" ry="12" fill="#f4c65a"/>
+      <ellipse cx="32" cy="20" rx="4.6" ry="7" fill="#2f86d6"/>
+      <ellipse cx="32" cy="18.5" rx="2" ry="3.4" fill="#05202a"/>
+    </svg>
+    <p class="hello" id="hello">Hi my pretty <em>peacock miraculous holder.</em></p>
+    <p class="body-text">I'm extremely sorry for the things I did and said &amp; to apologise I'm sending you this,</p>
+    <button class="open" id="open" type="button">Open <span class="arr" aria-hidden="true">&#8594;</span></button>
+  </section>
+</main>
+
+<div class="layer garden" id="garden" aria-hidden="true">
+  <div class="sorry">I'm sorry, Ryu.</div>
+  <div class="bx" id="far"></div>
+  <div class="emblem" id="emblem"></div>
+  <div class="hill"></div>
+  <div class="bx" id="bed"></div>
+  <div class="bx" id="fg"></div>
+  <div class="bx" id="crits" style="pointer-events:none"></div>
+</div>
+
+<script>
+(function () {
+  /* ---------- bokeh canvas ---------- */
+  var cv = document.getElementById('bokeh');
+  var ctx = cv.getContext('2d');
+  var W = 0, H = 0, dpr = 1;
+  var cool = ['#2fd6c9', '#3aa0ff', '#f4c65a', '#6ee7d8', '#8fb8ff', '#1fb5ac'];
+  var warm = ['#ff9eb8', '#ffd27a', '#c7a8ff', '#ff8fa3', '#ffe08a', '#ffb3c8'];
+  function hex3(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var mix = 0, target = 0, dots = [];
+  function size() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function seed() {
+    dots = [];
+    var m = Math.min(W, H);
+    var count = W < 600 ? 30 : 46;
+    for (var i = 0; i < count; i++) {
+      var k = i % 6;
+      dots.push({
+        x: Math.random() * W, y: Math.random() * H,
+        r: m * (.03 + Math.random() * .13),
+        vy: -(0.08 + Math.random() * 0.28), vx: (Math.random() - .5) * .18,
+        a: .10 + Math.random() * .22,
+        c: hex3(cool[k]), w: hex3(warm[(k + i) % 6]),
+        ph: Math.random() * 6.28
+      });
+    }
+  }
+  function frame(t) {
+    mix += (target - mix) * 0.02;
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < dots.length; i++) {
+      var d = dots[i];
+      if (!still) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.y < -d.r) { d.y = H + d.r; d.x = Math.random() * W; }
+        if (d.x < -d.r) d.x = W + d.r; if (d.x > W + d.r) d.x = -d.r;
+      }
+      var tw = still ? 1 : 0.8 + 0.2 * Math.sin(t / 1500 + d.ph);
+      var col = [0, 1, 2].map(function (j) { return Math.round(d.c[j] + (d.w[j] - d.c[j]) * mix); }).join(',');
+      var g = ctx.createRadialGradient(d.x, d.y, d.r * .1, d.x, d.y, d.r);
+      g.addColorStop(0, 'rgba(' + col + ',' + (d.a * .45 * tw) + ')');
+      g.addColorStop(.78, 'rgba(' + col + ',' + (d.a * .6 * tw) + ')');
+      g.addColorStop(.94, 'rgba(' + col + ',' + (d.a * 1.1 * tw) + ')');
+      g.addColorStop(1, 'rgba(' + col + ',0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.2832); ctx.fill();
+    }
+    if (!still) requestAnimationFrame(frame);
+  }
+  size(); seed();
+  window.addEventListener('resize', function () { size(); seed(); if (still) frame(0); });
+  if (still) frame(0); else requestAnimationFrame(frame);
+
+  /* ---------- realistic flowers: layered, shaded petals ---------- */
+  var uid = 0;
+  function rng(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function mixc(a, b, t) {
+    var x = hex3(a), y = hex3(b);
+    return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(x[i] + (y[i] - x[i]) * t); }).join(',') + ')';
+  }
+  /* to/bo = outer petal tip/base, ti/bi = inner petal tip/base */
+  var PAL = {
+    pink:    { to: '#ffd0de', bo: '#ef6f98', ti: '#f78fb0', bi: '#a8205a' },
+    coral:   { to: '#ffe0cc', bo: '#f4906d', ti: '#f6835f', bi: '#b0352b' },
+    lilac:   { to: '#eadcff', bo: '#a37de6', ti: '#b896f2', bi: '#5b2ba8' },
+    gold:    { to: '#fff3c2', bo: '#f4b73a', ti: '#ffd562', bi: '#c27a10' },
+    white:   { to: '#ffffff', bo: '#ecd9e3', ti: '#fff0f5', bi: '#dba9be' },
+    magenta: { to: '#ffb0d8', bo: '#dc3a86', ti: '#ea5aa2', bi: '#8c0f54' }
+  };
+  /* rings: [petal count, length, width, rotation offset] from outer to inner */
+  var KINDS = {
+    rose:   { rings: [[9, 94, 31, 0], [8, 80, 29, .5], [7, 66, 26, .2], [6, 52, 22, .7], [5, 38, 18, .1], [4, 25, 14, .5]] },
+    cosmos: { rings: [[8, 95, 37, 0], [8, 84, 35, .5]], disk: 15 },
+    daisy:  { rings: [[20, 95, 7, 0], [20, 88, 7, .5], [16, 80, 6.5, .25]], disk: 21 }
+  };
+  function petal(L, Wd, rot, gid) {
+    var d = 'M0 0 C ' + (-Wd) + ' ' + (-L * .22) + ', ' + (-Wd * 1.12) + ' ' + (-L * .86) + ', 0 ' + (-L) +
+            ' C ' + (Wd * 1.12) + ' ' + (-L * .86) + ', ' + Wd + ' ' + (-L * .22) + ', 0 0 Z';
+    var s = 'M0 ' + (-L * .12) + ' Q ' + (Wd * .22) + ' ' + (-L * .5) + ' 0 ' + (-L * .88) +
+            ' Q ' + (-Wd * .22) + ' ' + (-L * .5) + ' 0 ' + (-L * .12) + ' Z';
+    return '<g transform="translate(100 100) rotate(' + rot.toFixed(1) + ')">' +
+      '<path d="' + d + '" fill="url(#' + gid + ')" stroke="rgba(255,255,255,.28)" stroke-width=".8"/>' +
+      '<path d="' + s + '" fill="rgba(255,255,255,.16)"/></g>';
+  }
+  function bloom(kind, palName, sd) {
+    var k = KINDS[kind], p = PAL[palName], r = rng(sd), id = 'f' + (uid++), defs = '', body = '', n = k.rings.length;
+    k.rings.forEach(function (g, i) {
+      var t = n > 1 ? i / (n - 1) : 0, tip, base;
+      if (kind === 'daisy') { tip = mixc('#ffffff', p.to, .25 + .25 * t); base = mixc(p.to, p.bo, .55); }
+      else { tip = mixc(p.to, p.ti, t); base = mixc(p.bo, p.bi, t); }
+      var gid = id + '_' + i;
+      defs += '<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + tip + '"/><stop offset="1" stop-color="' + base + '"/></linearGradient>';
+      for (var j = 0; j < g[0]; j++) {
+        var rot = (j + g[3]) * 360 / g[0] + (r() - .5) * (kind === 'daisy' ? 5 : 10);
+        body += petal(g[1] * (.94 + r() * .12), g[2] * (.92 + r() * .16), rot, gid);
+      }
+    });
+    var centre = '';
+    if (k.disk) {
+      var R = k.disk, cid = id + '_c';
+      defs += '<radialGradient id="' + cid + '" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#ffe98a"/><stop offset=".7" stop-color="#e8a21f"/><stop offset="1" stop-color="#a8650a"/></radialGradient>';
+      centre = '<circle cx="100" cy="100" r="' + R + '" fill="url(#' + cid + ')" stroke="rgba(90,45,0,.35)" stroke-width="1.2"/>';
+      for (var q = 0; q < 16; q++) {
+        var ang = r() * 6.2832, rad = r() * (R - 3);
+        centre += '<circle cx="' + (100 + Math.cos(ang) * rad).toFixed(1) + '" cy="' + (100 + Math.sin(ang) * rad).toFixed(1) + '" r="' + (.8 + r() * .9).toFixed(1) + '" fill="rgba(110,55,0,.4)"/>';
+      }
+      centre += '<ellipse cx="' + (100 - R * .3) + '" cy="' + (100 - R * .35) + '" rx="' + (R * .3) + '" ry="' + (R * .18) + '" fill="rgba(255,255,255,.35)"/>';
+    } else {
+      centre = '<circle cx="100" cy="100" r="9" fill="' + mixc(p.bi, '#000000', .2) + '"/><ellipse cx="97" cy="96" rx="3.500" ry="2" fill="rgba(255,255,255,.3)"/>';
+    }
+    return '<svg viewBox="0 0 200 200" aria-hidden="true"><defs>' + defs + '</defs>' + body + centre + '</svg>';
+  }
+  function leaf(rot) {
+    var id = 'l' + (uid++);
+    return '<svg viewBox="0 0 100 200" aria-hidden="true" style="transform:rotate(' + rot + 'deg)"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3cc29a"/><stop offset="1" stop-color="#0d4a44"/></linearGradient></defs>' +
+      '<path d="M50 200 C-4 140 2 50 50 0 C98 50 104 140 50 200Z" fill="url(#' + id + ')" stroke="rgba(255,255,255,.18)" stroke-width="1"/>' +
+      '<path d="M50 196 L50 14" stroke="rgba(255,255,255,.28)" stroke-width="1.600"/></svg>';
+  }
+
+  /* leaves behind the bottom flowers: [x %, size, rotation] */
+  var leaves = [[3, 44, -38], [13, 40, 30], [24, 46, -26], [35, 40, 42], [46, 48, -18], [57, 42, 36], [68, 46, -34], [79, 40, 28], [89, 46, -30], [98, 42, 36]];
+  var bed = leaves.map(function (l, i) {
+    return '<div class="ap leaf" style="--x:' + l[0] + ';--s:' + l[1] + ';--b:-6;--d:' + (i * .04).toFixed(2) + 's">' + leaf(l[2]) + '</div>';
+  }).join('');
+  /* flowers: [x %, bottom (vmin), size (vmin), kind, palette, seed, delay]; back row first, then front row */
+  var bedData = [
+    [20, 10, 28, 'daisy', 'pink', 21, .30], [42, 12, 26, 'cosmos', 'coral', 22, .34], [60, 11, 28, 'rose', 'lilac', 23, .38], [80, 10, 27, 'daisy', 'white', 24, .42],
+    [6, -5, 36, 'rose', 'pink', 31, .0], [26, -9, 40, 'cosmos', 'lilac', 32, .10], [48, -12, 44, 'rose', 'coral', 33, .20], [68, -8, 38, 'daisy', 'white', 34, .12], [90, -4, 37, 'rose', 'gold', 35, .05]
+  ];
+  bed += bedData.map(function (f) {
+    return '<div class="ap fl" style="--x:' + f[0] + ';--b:' + f[1] + ';--s:' + f[2] + ';--d:' + f[6] + 's">' + bloom(f[3], f[4], f[5]) + '</div>';
+  }).join('');
+  document.getElementById('bed').innerHTML = bed;
+
+  /* big blurred flowers framing the corners: [kind, palette, seed, position, size (vmin), delay] */
+  var fgData = [
+    ['rose', 'pink', 3, 'left:-13vmin;bottom:-13vmin', 54, 0],
+    ['rose', 'coral', 8, 'right:-15vmin;bottom:-11vmin', 58, .15],
+    ['cosmos', 'lilac', 5, 'left:-15vmin;top:-14vmin', 46, .3],
+    ['daisy', 'white', 12, 'right:-12vmin;top:-12vmin', 44, .45]
+  ];
+  document.getElementById('fg').innerHTML = fgData.map(function (f) {
+    return '<div class="ap fgf" style="' + f[3] + ';--s:' + f[4] + ';--d:' + f[5] + 's">' + bloom(f[0], f[1], f[2]) + '</div>';
+  }).join('');
+
+  /* soft far flowers: [x %, y %, size (vmin), kind, palette, seed, delay] */
+  var farData = [
+    [5, 30, 14, 'cosmos', 'lilac', 41, .2], [93, 26, 16, 'rose', 'coral', 42, .4], [8, 56, 12, 'daisy', 'pink', 43, .6], [92, 52, 13, 'rose', 'gold', 44, .8]
+  ];
+  document.getElementById('far').innerHTML = farData.map(function (f) {
+    return '<div class="ap ff" style="--x:' + f[0] + ';--y:' + f[1] + ';--s:' + f[2] + ';--d:' + f[6] + 's">' + bloom(f[3], f[4], f[5]) + '</div>';
+  }).join('');
+
+  /* ---------- peacock emblem ---------- */
+  var angles = [-72, -54, -36, -18, 0, 18, 36, 54, 72], fe = '';
+  angles.forEach(function (a) {
+    fe += '<g class="ft" style="--a:' + a + 'deg;--d:' + (Math.abs(a) / 72 * 0.5).toFixed(2) + 's">' +
+      '<path d="M150 200 L150 80" stroke="#13908a" stroke-width="2.4" stroke-linecap="round"/>' +
+      '<ellipse cx="150" cy="72" rx="21" ry="37" fill="url(#fth)" stroke="rgba(255,255,255,.35)" stroke-width="1"/>' +
+      '<ellipse cx="150" cy="66" rx="11" ry="18" fill="#f4c65a"/>' +
+      '<ellipse cx="150" cy="64" rx="6.5" ry="11" fill="#2f86d6"/>' +
+      '<ellipse cx="150" cy="62" rx="2.6" ry="4.8" fill="#05202a"/></g>';
+  });
+  document.getElementById('emblem').innerHTML =
+    '<svg viewBox="-30 0 360 250" aria-label="Peacock emblem" role="img"><defs>' +
+    '<linearGradient id="fth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fd6c9"/><stop offset="1" stop-color="#2468b8"/></linearGradient>' +
+    '<linearGradient id="bdy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2fd6c9"/><stop offset="1" stop-color="#1b6fb8"/></linearGradient></defs>' +
+    fe +
+    '<g class="bd"><ellipse cx="150" cy="214" rx="27" ry="25" fill="url(#bdy)" stroke="rgba(255,255,255,.4)" stroke-width="1"/>' +
+    '<circle cx="150" cy="184" r="15" fill="url(#bdy)" stroke="rgba(255,255,255,.4)" stroke-width="1"/>' +
+    '<path d="M150 170 L150 156 M143 171 L138 159 M157 171 L162 159" stroke="#f4c65a" stroke-width="2" stroke-linecap="round"/>' +
+    '<circle cx="150" cy="155" r="3" fill="#f4c65a"/><circle cx="137.500" cy="158" r="2.600" fill="#f4c65a"/><circle cx="162.500" cy="158" r="2.600" fill="#f4c65a"/>' +
+    '<circle cx="144.500" cy="183" r="2.200" fill="#05202a"/><circle cx="155.500" cy="183" r="2.200" fill="#05202a"/>' +
+    '<path d="M147 189 L153 189 L150 195 Z" fill="#f4c65a"/>' +
+    '<path d="M140 218 C 146 232, 154 232, 160 218" stroke="rgba(255,255,255,.45)" stroke-width="1.5" fill="none" stroke-linecap="round"/></g></svg>';
+
+  /* ---------- little characters (original) ---------- */
+  var bunny = '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+    '<ellipse cx="34" cy="22" rx="9" ry="20" fill="#ffe3ec"/><ellipse cx="66" cy="22" rx="9" ry="20" fill="#ffe3ec"/>' +
+    '<ellipse cx="34" cy="24" rx="4" ry="13" fill="#ffb3c8"/><ellipse cx="66" cy="24" rx="4" ry="13" fill="#ffb3c8"/>' +
+    '<ellipse cx="50" cy="64" rx="34" ry="30" fill="#ffe3ec"/>' +
+    '<circle cx="39" cy="60" r="3.600" fill="#3a1f2b"/><circle cx="61" cy="60" r="3.600" fill="#3a1f2b"/>' +
+    '<circle cx="40.200" cy="58.800" r="1.200" fill="#fff"/><circle cx="62.200" cy="58.800" r="1.200" fill="#fff"/>' +
+    '<ellipse cx="30" cy="70" rx="6" ry="4" fill="#ff9eb8" fill-opacity=".7"/><ellipse cx="70" cy="70" rx="6" ry="4" fill="#ff9eb8" fill-opacity=".7"/>' +
+    '<path d="M44 70 Q50 77 56 70" stroke="#3a1f2b" stroke-width="2.400" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="34" cy="41" r="5" fill="#c7a8ff"/><circle cx="46" cy="38" r="5" fill="#f4c65a"/><circle cx="58" cy="38" r="5" fill="#ff8fa3"/><circle cx="68" cy="42" r="5" fill="#9ee7de"/></svg>';
+  var bee = '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><clipPath id="beeclip"><ellipse cx="50" cy="60" rx="32" ry="28"/></clipPath></defs>' +
+    '<ellipse cx="30" cy="30" rx="15" ry="11" fill="#d9f6f2" fill-opacity=".85" transform="rotate(-25 30 30)"/>' +
+    '<ellipse cx="70" cy="30" rx="15" ry="11" fill="#d9f6f2" fill-opacity=".85" transform="rotate(25 70 30)"/>' +
+    '<ellipse cx="50" cy="60" rx="32" ry="28" fill="#f4c65a"/>' +
+    '<g clip-path="url(#beeclip)"><rect x="14" y="68" width="72" height="9" fill="#4a3516"/><rect x="14" y="82" width="72" height="9" fill="#4a3516"/></g>' +
+    '<circle cx="40" cy="52" r="3.600" fill="#2a1d0a"/><circle cx="60" cy="52" r="3.600" fill="#2a1d0a"/>' +
+    '<circle cx="41.200" cy="50.800" r="1.200" fill="#fff"/><circle cx="61.200" cy="50.800" r="1.200" fill="#fff"/>' +
+    '<ellipse cx="31" cy="60" rx="5" ry="3.400" fill="#ff9eb8" fill-opacity=".75"/><ellipse cx="69" cy="60" rx="5" ry="3.400" fill="#ff9eb8" fill-opacity=".75"/>' +
+    '<path d="M44 60 Q50 66 56 60" stroke="#2a1d0a" stroke-width="2.400" fill="none" stroke-linecap="round"/>' +
+    '<path d="M42 33 Q38 22 32 20 M58 33 Q62 22 68 20" stroke="#4a3516" stroke-width="2.400" fill="none" stroke-linecap="round"/><circle cx="32" cy="20" r="2.800" fill="#4a3516"/><circle cx="68" cy="20" r="2.800" fill="#4a3516"/></svg>';
+  var chick = '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+    '<g transform="translate(50 74)"><ellipse rx="9" ry="22" fill="#1b9aa0" transform="rotate(-50) translate(0 -26)"/><ellipse rx="9" ry="22" fill="#2468b8" transform="rotate(0) translate(0 -30)"/><ellipse rx="9" ry="22" fill="#1b9aa0" transform="rotate(50) translate(0 -26)"/></g>' +
+    '<circle cx="50" cy="62" r="28" fill="#2fd6c9"/>' +
+    '<path d="M50 36 L50 24 M42 37 L36 27 M58 37 L64 27" stroke="#f4c65a" stroke-width="2.400" stroke-linecap="round"/>' +
+    '<circle cx="50" cy="22" r="3.200" fill="#f4c65a"/><circle cx="35" cy="25" r="2.800" fill="#f4c65a"/><circle cx="65" cy="25" r="2.800" fill="#f4c65a"/>' +
+    '<circle cx="40" cy="58" r="3.600" fill="#05202a"/><circle cx="60" cy="58" r="3.600" fill="#05202a"/>' +
+    '<circle cx="41.200" cy="56.800" r="1.200" fill="#fff"/><circle cx="61.200" cy="56.800" r="1.200" fill="#fff"/>' +
+    '<ellipse cx="31" cy="67" rx="5" ry="3.400" fill="#ff9eb8" fill-opacity=".75"/><ellipse cx="69" cy="67" rx="5" ry="3.400" fill="#ff9eb8" fill-opacity=".75"/>' +
+    '<path d="M45 64 L55 64 L50 72 Z" fill="#f4c65a"/></svg>';
+  var critData = [
+    ['Bunny', bunny, 'left:14%;bottom:17vmin', 0],
+    ['Bee', bee, 'left:7%;bottom:40vmin', .35],
+    ['Peacock chick', chick, 'right:14%;bottom:17vmin', .7]
+  ];
+  var critsEl = document.getElementById('crits');
+  critsEl.innerHTML = critData.map(function (c) {
+    return '<button type="button" class="crit" aria-label="' + c[0] + '" style="pointer-events:auto;' + c[2] + ';--d:' + c[3] + 's"><div class="in">' + c[1] + '</div></button>';
+  }).join('');
+  critsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.crit'); if (!b) return;
+    b.classList.remove('boing'); void b.offsetWidth; b.classList.add('boing');
+  });
+
+  /* ---------- reveal ---------- */
+  var intro = document.getElementById('intro');
+  var garden = document.getElementById('garden');
+  document.getElementById('open').addEventListener('click', function () {
+    intro.classList.add('gone');
+    garden.classList.add('on');
+    garden.removeAttribute('aria-hidden');
+    target = 1;
+    if (still) { mix = 1; frame(0); }
+    setTimeout(function () { intro.hidden = true; }, 750);
+  });
+})();
+</script>
